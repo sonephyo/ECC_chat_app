@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, request
 from flask_socketio import SocketIO, emit
 from flask_cors import CORS
 
@@ -9,6 +9,14 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
 @app.route("/")
 def hello():
     return "Hello, this is the Flask-SocketIO server."
+
+@socketio.on("connect")
+def on_connect():
+    print("Client connected:", request.sid)
+    
+@socketio.on("disconnect")
+def handle_disconnect():
+    print(f"User {request.sid} disconnected.")
 
 @socketio.on("message")
 def handle_message(data):
