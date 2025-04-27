@@ -18,19 +18,19 @@ const Index = () => {
 
   useEffect(() => {
     if (joinChatRoom) {
-      console.log("User has joined the chat room");
-  
       const backend_url = import.meta.env.VITE_BACKEND_URL;
       const socket = io(backend_url);
   
       socketRef.current = socket;
+
+      socket.on("message", (data: { message: string })=> {
+        console.log(data)
+      })
   
       socket.on("connect", () => {
-        console.log("Connected to backend socket server");
   
         if (username && selectedRoom !== null) {
           socket.emit("join", { username, room: selectedRoom });
-          console.log("Emit join event:", { username, room: selectedRoom });
         }
       });
   

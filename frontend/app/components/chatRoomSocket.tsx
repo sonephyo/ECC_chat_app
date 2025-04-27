@@ -3,7 +3,7 @@ import type { Socket } from "socket.io-client";
 import type { DefaultEventsMap } from "@socket.io/component-emitter";
 
 interface ChatRoomSocketProps {
-  socketRef: React.MutableRefObject<Socket<DefaultEventsMap, DefaultEventsMap> | null>;
+  socketRef: React.RefObject<Socket<DefaultEventsMap, DefaultEventsMap> | null>;
   selectedRoom: number | null;
 }
 
