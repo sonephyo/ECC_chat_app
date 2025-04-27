@@ -18,18 +18,29 @@ const Index = () => {
 
   useEffect(() => {
     if (joinChatRoom) {
-      console.log("user has joined the chat room");
+      console.log("User has joined the chat room");
+  
       const backend_url = import.meta.env.VITE_BACKEND_URL;
-      let socket = io(backend_url);
-
+      const socket = io(backend_url);
+  
       socketRef.current = socket;
-
+  
+      socket.on("connect", () => {
+        console.log("Connected to backend socket server");
+  
+        if (username && selectedRoom !== null) {
+          socket.emit("join", { username, room: selectedRoom });
+          console.log("Emit join event:", { username, room: selectedRoom });
+        }
+      });
+  
       return () => {
-        console.log("cleaning up socket connection");
+        console.log("Cleaning up socket connection...");
         socket.disconnect();
       };
     }
-  }, [joinChatRoom]);
+  }, [joinChatRoom, username, selectedRoom]);
+  
 
   const handleJoinChatRoom = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
@@ -41,14 +52,14 @@ const Index = () => {
     setjoinChatRoom(true);
 
     if (socketRef.current) {
-      socketRef.current.emit("join", { username, selectedRoom });
-      console.log("Emit join event:", { username, selectedRoom });
+      socketRef.current.emit("join", { username, room: selectedRoom });
+      console.log("Emit join event:", { username, room: selectedRoom });
     }
   };
   const handleLeaveChatRoom = () => {
     if (socketRef.current) {
-      socketRef.current.emit("leave", { username, selectedRoom });
-      console.log("Emit leave event:", { username, selectedRoom });
+      socketRef.current.emit("leave", { username, room: selectedRoom });
+      console.log("Emit leave event:", { username, room: selectedRoom });
     }
     setjoinChatRoom(false);
   };
@@ -74,7 +85,7 @@ const Index = () => {
               <option value="">--Select an option--</option>
               <option value="1">Option 1</option>
               <option value="2">Option 2</option>
-              <option value="2">Option 3</option>
+              <option value="3">Option 3</option>
             </select>
           </div>
 
