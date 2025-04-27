@@ -6,7 +6,7 @@ import { useSocket } from "~/lib/socketContext";
 
 const Chat = () => {
   const [display, setdisplay] = useState<string>("create-room");
-  const { socket } = useSocket();
+  const { socket, setUsername, username } = useSocket();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -26,6 +26,12 @@ const Chat = () => {
   return (
     <div className="bg-blue-200 flex flex-col items-center gap-5">
       <ChatNavigate setdisplay={setdisplay} />
+      <input
+        type="text"
+        value={username}
+        onChange={(e) => setUsername(e.target.value)}
+        placeholder="Enter your name..."
+      />
       {display === "create-room" ? (
         <CreateChat socket={socket} />
       ) : display === "join-room" ? (

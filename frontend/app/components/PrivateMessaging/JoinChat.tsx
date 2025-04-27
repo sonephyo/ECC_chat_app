@@ -2,6 +2,7 @@ import type { Socket } from "socket.io-client";
 import type { DefaultEventsMap } from "@socket.io/component-emitter";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
+import { useSocket } from "~/lib/socketContext";
 
 interface JoinChatProps {
   socket: Socket<DefaultEventsMap, DefaultEventsMap> | null;
@@ -11,6 +12,8 @@ const backend_url = import.meta.env.VITE_BACKEND_URL;
 
 const JoinChat: React.FC<JoinChatProps> = ({ socket }) => {
   const [rooms, setrooms] = useState<string[]>([]);
+
+  const { username } = useSocket();
 
   useEffect(() => {
     if (!socket) return;
@@ -41,7 +44,11 @@ const JoinChat: React.FC<JoinChatProps> = ({ socket }) => {
           rooms.map((item, index) => (
             <div className="flex flex-row w-100 justify-between">
               <p key={index}>{item}</p>
-              <Link to={`/chat/${item}`}>Join Room</Link>
+              {username ? (
+                <Link to={`/chat/${item}`}>Join Room</Link>
+              ) : (
+                <p className="text-gray-400" onClick={() => alert("enter your name")}>Join Room</p>
+              )}
             </div>
           ))}
       </div>

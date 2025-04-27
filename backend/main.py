@@ -66,27 +66,34 @@ def handle_join_room(data):
     room_code = data["room_code"]
 
     if room_code in private_rooms:
-        if len(private_rooms[room_code]) > 2:
+        print(private_rooms[room_code], " The lenght is ", len(private_rooms[room_code]) > 2)
+        if request.sid in private_rooms[room_code]:
+            print(f"{username} (sid: {request.sid}) already in room {room_code}")
+            emit("user_joined", {"username": username}, to=request.sid)
+            return
+        if len(private_rooms[room_code]) == 2:
             emit("error", {"message": "The room is full."})
+            return
         private_rooms[room_code].append(request.sid)
         join_room(room_code)
-        emit("user_joined", {room_code: username}, to=room_code)
+        emit("user_joined", {"username": username}, to=room_code)
     else:
         emit("error", {"message": "Invalid room code"})
     print(private_rooms)
 
 
-# @socketio.on("leave_room")
-# def handle_leave_room(data):
-#     username = data["username"]
-#     room_code = data["room_code"]
+@socketio.on("leave_room")
+def handle_leave_room(data):
+    username = data["username"]
+    room_code = data["room_code"]
 
-#     if room_code in private_rooms:
-#         leave_room(room_code)
-#         private_rooms[room_code].remove(request.sid)
-#         if len(private_rooms[room_code] == 0):
-#             del private_rooms[room_code]
-#         emit("user_left", {"username": username}, to=room_code)
+    if room_code in private_rooms:
+        leave_room(room_code)
+        private_rooms[room_code].remove(request.sid)
+        if len(private_rooms[room_code]) == 0:
+            del private_rooms[room_code]
+        emit("user_left", {"username": username}, to=room_code)
+        print(username, "left the room", room_code)
 
 
 # handle message send
