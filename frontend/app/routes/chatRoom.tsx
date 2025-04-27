@@ -1,6 +1,6 @@
 import { Send } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useLocation, useNavigate, useParams } from "react-router";
 import { Button } from "~/components/ui/button";
 import {
   Card,
@@ -26,6 +26,8 @@ const chatRoom = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [inputValue, setInputValue] = useState("");
+  const location = useLocation();
+  const roomRef = useRef(roomId);
 
   useEffect(() => {
     if (!socket || !roomId || !username) {
@@ -33,6 +35,7 @@ const chatRoom = () => {
       navigate("/chat");
       return;
     }
+    roomRef.current = roomId;
   }, []);
 
   useEffect(() => {
@@ -68,12 +71,19 @@ const chatRoom = () => {
       socket.off("joined_room", handleUserJoined);
       socket.off("error", handleError);
       window.removeEventListener("beforeunload", handleLeave);
+
+      const newPath = window.location.pathname;
+      const isNavigatingAway = !newPath.includes(roomRef.current as string);
+
+      if (isNavigatingAway) {
+        console.log("Navigation detected, leaving room");
+        handleLeave();
+      }
     };
   }, [socket]);
 
   const handleSendMessage = () => {
     if (!socket || !inputValue) return;
-    console.log("sending Hello world");
     socket.emit("send_message", {
       username: username,
       room_code: roomId,
