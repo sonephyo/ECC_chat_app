@@ -1,4 +1,4 @@
-import Index from "~/components";
+import { Link } from "react-router";
 import type { Route } from "../+types/root";
 
 export function meta({}: Route.MetaArgs) {
@@ -9,5 +9,10 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function Home() {
-  return <Index />;
+  return (
+    <div>
+      <p>This page is empty</p>
+      <Link to={"/chat"}>Chat</Link>
+    </div>
+  );
 }
