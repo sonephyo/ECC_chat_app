@@ -52,7 +52,6 @@ def handle_create_room(data):
         content=username + " created the room.",
         timestamp=datetime.now().isoformat(),
     )
-    print(new_message)
     messages[room_code].append(new_message)
 
     emit("room_created", {"room_code": room_code})
@@ -67,11 +66,6 @@ def handle_join_room(data):
     room_code = data["room_code"]
 
     if room_code in private_rooms:
-        print(
-            private_rooms[room_code],
-            " The lenght is ",
-            len(private_rooms[room_code]) > 2,
-        )
         if request.sid in private_rooms[room_code]:
             print(f"{username} (sid: {request.sid}) already in room {room_code}")
             emit("user_joined", {"username": username}, to=request.sid)
@@ -149,4 +143,4 @@ def handle_send_message(data):
 
 
 if __name__ == "__main__":
-    socketio.run(app, host="0.0.0.0", port=5001, debug=True)
+    socketio.run(app, host="0.0.0.0", port=5001)
