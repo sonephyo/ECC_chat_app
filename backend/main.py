@@ -56,7 +56,7 @@ def handle_create_room(data):
 
     emit("room_created", {"room_code": room_code})
 
-    emit("recieve_message", {"messages": messages[room_code]}, broadcast=True)
+    emit("recieve_message", {"messages": messages[room_code]})
     print(f"{username} created room {room_code}")
 
 
@@ -83,7 +83,7 @@ def handle_join_room(data):
         join_room(room_code)
         emit("user_joined", {"username": username}, to=room_code)
         messages[room_code].append("System: " + username + " has joined the room.")
-        emit("recieve_message", {"messages": messages[room_code]}, broadcast=True)
+        emit("recieve_message", {"messages": messages[room_code]}, to=room_code)
     else:
         emit("error", {"message": "Invalid room code"})
     print(private_rooms)
@@ -99,7 +99,9 @@ def handle_leave_room(data):
         private_rooms[room_code].remove(request.sid)
         if len(private_rooms[room_code]) == 0:
             del private_rooms[room_code]
-        emit("user_left", {"username": username}, to=room_code)
+            
+        messages[room_code].append("System: " + username + " has left the room." )
+        emit("recieve_message", {"messages": messages[room_code]}, to=room_code)
         print(username, "left the room", room_code)
 
 
@@ -117,7 +119,7 @@ def handle_send_message(data):
     
     print(messages[room_code])
 
-    emit("recieve_message", {"messages": messages[room_code]}, to=room_code, broadcast=True)
+    emit("recieve_message", {"messages": messages[room_code]}, to=room_code)
 
 
 if __name__ == "__main__":

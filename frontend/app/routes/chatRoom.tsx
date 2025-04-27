@@ -37,17 +37,12 @@ const chatRoom = () => {
       navigate("/chat");
     };
 
-    const handleUserLeft = (data: { username: string }) => {
-      console.log(data.username + " has left the room");
-    };
-
     const handleMessages = (data: { messages: string[] }) => {
       setMessages(data.messages);
     };
 
     socket.on("user_joined", handleUserJoined);
     socket.on("error", handleError);
-    socket.on("user_left", handleUserLeft);
     socket.on("recieve_message", handleMessages);
 
     const handleLeave = () => {
@@ -57,7 +52,6 @@ const chatRoom = () => {
     window.addEventListener("beforeunload", handleLeave);
 
     return () => {
-      socket.off("user_left", handleUserLeft);
       socket.off("joined_room", handleUserJoined);
       socket.off("error", handleError);
       window.removeEventListener("beforeunload", handleLeave);
