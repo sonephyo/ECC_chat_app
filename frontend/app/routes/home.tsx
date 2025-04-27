@@ -1,5 +1,5 @@
-import Chat from "~/chat/chat";
-import type { Route } from "./+types/home";
+import { Link } from "react-router";
+import type { Route } from "../+types/root";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -9,5 +9,10 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function Home() {
-  return <Chat />;
+  return (
+    <div>
+      <p>This page is empty</p>
+      <Link to={"/chat"}>Chat</Link>
+    </div>
+  );
 }

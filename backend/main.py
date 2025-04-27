@@ -4,14 +4,21 @@ from flask_cors import CORS
 
 from flask_socketio import join_room, leave_room
 
+from collections import defaultdict
+
+private_rooms = {}
+messages = defaultdict(list)
+# Create a private room
+li = [0]
+
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
 
 
-@app.route("/")
-def hello():
-    return "Hello, this is the Flask-SocketIO server."
+@app.route("/chat-groups")
+def get_chat_groups():
+    return {"rooms": list(private_rooms.keys())}
 
 
 @socketio.on("connect")
@@ -24,38 +31,93 @@ def handle_disconnect():
     print(f"User {request.sid} disconnected.")
 
 
-chat_history = {}
+## All listeners
+"""
+- create_room
+- join_room
+- leave_room
+- send_message
+"""
 
 
-@socketio.on("join")
-def on_join(data):
+def generate_room_code():
+    li[0] += 1
+    return str(li[0])
+
+
+@socketio.on("create_room")
+def handle_create_room(data):
     username = data["username"]
-    room = data["room"]
-    join_room(room)
-    send(username + " has entered the room.", to=room)
+    room_code = generate_room_code()
 
-    if room in chat_history:
-        for message in chat_history[room]:
-            emit("receive_message", {"message": message}, to=request.sid)
+    private_rooms[room_code] = [request.sid]
+    join_room(room_code)
+    messages[room_code].append("System: " + username + " has created the room.")
+
+    emit("room_created", {"room_code": room_code})
+
+    emit("recieve_message", {"messages": messages[room_code]}, broadcast=True)
+    print(f"{username} created room {room_code}")
 
 
-@socketio.on("leave")
-def on_leave(data):
+# Joining a private room and leaving
+@socketio.on("join_room")
+def handle_join_room(data):
     username = data["username"]
-    room = data["room"]
-    leave_room(room)
-    send(username + " has left the room.", to=room)
+    room_code = data["room_code"]
+
+    if room_code in private_rooms:
+        print(
+            private_rooms[room_code],
+            " The lenght is ",
+            len(private_rooms[room_code]) > 2,
+        )
+        if request.sid in private_rooms[room_code]:
+            print(f"{username} (sid: {request.sid}) already in room {room_code}")
+            emit("user_joined", {"username": username}, to=request.sid)
+            return
+        if len(private_rooms[room_code]) == 2:
+            emit("error", {"message": "The room is full."})
+            return
+        private_rooms[room_code].append(request.sid)
+        join_room(room_code)
+        emit("user_joined", {"username": username}, to=room_code)
+        messages[room_code].append("System: " + username + " has joined the room.")
+        emit("recieve_message", {"messages": messages[room_code]}, broadcast=True)
+    else:
+        emit("error", {"message": "Invalid room code"})
+    print(private_rooms)
 
 
+@socketio.on("leave_room")
+def handle_leave_room(data):
+    username = data["username"]
+    room_code = data["room_code"]
+
+    if room_code in private_rooms:
+        leave_room(room_code)
+        private_rooms[room_code].remove(request.sid)
+        if len(private_rooms[room_code]) == 0:
+            del private_rooms[room_code]
+        emit("user_left", {"username": username}, to=room_code)
+        print(username, "left the room", room_code)
+
+
+# handle message send
 @socketio.on("send_message")
 def handle_send_message(data):
+    username = data["username"]
+    room_code = data["room_code"]
     message = data["message"]
-    room = data["room"]
-    if room not in chat_history:
-        chat_history[room] = []
-    chat_history[room].append(message)
 
-    emit("receive_message", {"message": message}, to=room, broadcast=True)
+    if request.sid not in private_rooms[room_code]:
+        emit("error", {"message": "User should not be sending message here"})
+
+    messages[room_code].append(message)
+    
+    print(messages[room_code])
+
+    emit("recieve_message", {"messages": messages[room_code]}, to=room_code, broadcast=True)
 
 
 if __name__ == "__main__":
