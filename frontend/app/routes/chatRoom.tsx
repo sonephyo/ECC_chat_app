@@ -2,7 +2,14 @@ import { Send } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { Button } from "~/components/ui/button";
-import { Card, CardContent, CardFooter } from "~/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { useSocket } from "~/lib/socketContext";
 
@@ -81,15 +88,20 @@ const chatRoom = () => {
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault()
-      handleSendMessage()
+      e.preventDefault();
+      handleSendMessage();
     }
-  }
+  };
 
   return (
     <div className="w-full max-w-md mx-auto">
-      <h1 className="text-xl font-bold mb-4 text-center">Room: {roomId}</h1>
       <Card className="w-full">
+        <CardHeader>
+          <CardTitle className="text-xl font-bold mb-4 text-center">
+            Room: {roomId}
+          </CardTitle>
+          <CardDescription>User Logged in as: {username}</CardDescription>
+        </CardHeader>
         <CardContent className="p-4">
           <div className="h-[400px] overflow-y-auto pr-2">
             <div className="flex flex-col space-y-3">
@@ -121,7 +133,7 @@ const chatRoom = () => {
                     {message.content}
                   </div>
                   <span className="text-xs text-muted-foreground mt-1">
-                  {new Date(message.timestamp).toLocaleTimeString()} 
+                    {new Date(message.timestamp).toLocaleTimeString()}
                   </span>
                 </div>
               ))}
