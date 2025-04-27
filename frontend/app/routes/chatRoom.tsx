@@ -1,9 +1,10 @@
-import React from 'react'
+import React from "react";
+import { useSocket } from "~/lib/socketContext";
 
 const chatRoom = () => {
-  return (
-    <div>chatRoom</div>
-  )
-}
+  const { socket } = useSocket();
 
-export default chatRoom
+  return <div>chatRoom</div>;
+};
+
+export default chatRoom;

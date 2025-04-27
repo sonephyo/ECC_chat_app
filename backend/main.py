@@ -4,9 +4,21 @@ from flask_cors import CORS
 
 from flask_socketio import join_room, leave_room
 
+from collections import defaultdict
+
+private_rooms = {}
+messages = defaultdict(list)
+# Create a private room
+li = [0]
+
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
+
+
+@app.route("/chat-groups")
+def get_chat_groups():
+    return {"rooms": list(private_rooms.keys())}
 
 
 @socketio.on("connect")
@@ -26,11 +38,6 @@ def handle_disconnect():
 - leave_room
 - send_message
 """
-from collections import defaultdict
-private_rooms = {}
-messages = defaultdict(list)
-# Create a private room
-li = [0]
 
 
 def generate_room_code():
@@ -42,7 +49,6 @@ def generate_room_code():
 def handle_create_room(data):
     username = data["username"]
     room_code = generate_room_code()
-    
 
     private_rooms[room_code] = [request.sid]
     join_room(room_code)
@@ -50,13 +56,15 @@ def handle_create_room(data):
     emit("room_created", {"room_code": room_code})
     print(f"{username} created room {room_code}")
 
+
 # Joining a private room and leaving
+
 
 @socketio.on("join_room")
 def handle_join_room(data):
     username = data["username"]
     room_code = data["room_code"]
-    
+
     if room_code in private_rooms:
         if len(private_rooms[room_code]) > 2:
             emit("error", {"message": "The room is full."})
