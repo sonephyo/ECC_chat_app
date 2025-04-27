@@ -1,22 +1,30 @@
-FROM node:20-alpine AS development-dependencies-env
-COPY . /app
-WORKDIR /app
-RUN npm ci
+FROM node:23-bookworm-slim AS builder
 
-FROM node:20-alpine AS production-dependencies-env
-COPY ./package.json package-lock.json /app/
 WORKDIR /app
-RUN npm ci --omit=dev
 
-FROM node:20-alpine AS build-env
-COPY . /app/
-COPY --from=development-dependencies-env /app/node_modules /app/node_modules
-WORKDIR /app
+COPY package*.json ./
+RUN npm install
+
+# 4. Copy the rest of your application code
+COPY . .
+
+# 5. Build the Next.js app
 RUN npm run build
 
-FROM node:20-alpine
-COPY ./package.json package-lock.json /app/
-COPY --from=production-dependencies-env /app/node_modules /app/node_modules
-COPY --from=build-env /app/build /app/build
+# 6. Use a lighter base image to serve the built app
+FROM node:23-bookworm-slim AS runner
+
 WORKDIR /app
-CMD ["npm", "run", "start"]
+
+# Copy only necessary files from the builder stage
+COPY package*.json ./
+RUN npm install --omit=dev
+
+# Copy the build output
+COPY --from=builder /app/build ./build
+
+# Expose the port Next.js runs on
+EXPOSE 5173
+
+# Start the app
+CMD ["npm", "start"]
