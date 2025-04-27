@@ -1,15 +1,15 @@
+from datetime import datetime
 from flask import Flask, request
 from flask_socketio import SocketIO, emit, send
 from flask_cors import CORS
-
+from Message import Message
 from flask_socketio import join_room, leave_room
 
 from collections import defaultdict
 
 private_rooms = {}
 messages = defaultdict(list)
-# Create a private room
-li = [0]
+
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -21,6 +21,7 @@ def get_chat_groups():
     return {"rooms": list(private_rooms.keys())}
 
 
+# WebSocket Endpoints
 @socketio.on("connect")
 def on_connect():
     print("Client connected:", request.sid)
@@ -31,13 +32,7 @@ def handle_disconnect():
     print(f"User {request.sid} disconnected.")
 
 
-## All listeners
-"""
-- create_room
-- join_room
-- leave_room
-- send_message
-"""
+li = [0]
 
 
 def generate_room_code():
@@ -52,15 +47,20 @@ def handle_create_room(data):
 
     private_rooms[room_code] = [request.sid]
     join_room(room_code)
-    messages[room_code].append("System: " + username + " has created the room.")
+    new_message = Message(
+        username="System",
+        content=username + " created the room.",
+        timestamp=datetime.now().isoformat(),
+    )
+    print(new_message)
+    messages[room_code].append(new_message)
 
     emit("room_created", {"room_code": room_code})
 
-    emit("recieve_message", {"messages": messages[room_code]})
+    emit("recieve_message", {"messages": Message.serialize_list(messages[room_code])})
     print(f"{username} created room {room_code}")
 
 
-# Joining a private room and leaving
 @socketio.on("join_room")
 def handle_join_room(data):
     username = data["username"]
@@ -82,8 +82,18 @@ def handle_join_room(data):
         private_rooms[room_code].append(request.sid)
         join_room(room_code)
         emit("user_joined", {"username": username}, to=room_code)
-        messages[room_code].append("System: " + username + " has joined the room.")
-        emit("recieve_message", {"messages": messages[room_code]}, to=room_code)
+        messages[room_code].append(
+            Message(
+                username="System",
+                content=username + " joined the room. ",
+                timestamp=datetime.now().isoformat(),
+            )
+        )
+        emit(
+            "recieve_message",
+            {"messages": Message.serialize_list(messages[room_code])},
+            to=room_code,
+        )
     else:
         emit("error", {"message": "Invalid room code"})
     print(private_rooms)
@@ -99,13 +109,22 @@ def handle_leave_room(data):
         private_rooms[room_code].remove(request.sid)
         if len(private_rooms[room_code]) == 0:
             del private_rooms[room_code]
-            
-        messages[room_code].append("System: " + username + " has left the room." )
-        emit("recieve_message", {"messages": messages[room_code]}, to=room_code)
+
+        messages[room_code].append(
+            Message(
+                username="System",
+                content=username + " left the room. ",
+                timestamp=datetime.now().isoformat(),
+            )
+        )
+        emit(
+            "recieve_message",
+            {"messages": Message.serialize_list(messages[room_code])},
+            to=room_code,
+        )
         print(username, "left the room", room_code)
 
 
-# handle message send
 @socketio.on("send_message")
 def handle_send_message(data):
     username = data["username"]
@@ -115,11 +134,19 @@ def handle_send_message(data):
     if request.sid not in private_rooms[room_code]:
         emit("error", {"message": "User should not be sending message here"})
 
-    messages[room_code].append(message)
-    
+    messages[room_code].append(
+        Message(
+            username=username, content=message, timestamp=datetime.now().isoformat()
+        )
+    )
+
     print(messages[room_code])
 
-    emit("recieve_message", {"messages": messages[room_code]}, to=room_code)
+    emit(
+        "recieve_message",
+        {"messages": Message.serialize_list(messages[room_code])},
+        to=room_code,
+    )
 
 
 if __name__ == "__main__":

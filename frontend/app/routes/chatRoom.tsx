@@ -6,6 +6,11 @@ import { Card, CardContent } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { useSocket } from "~/lib/socketContext";
 
+interface Message {
+  username: string;
+  content: string;
+  timestamp: string;
+}
 const chatRoom = () => {
   const { socket } = useSocket();
   const { roomId } = useParams();
@@ -37,8 +42,9 @@ const chatRoom = () => {
       navigate("/chat");
     };
 
-    const handleMessages = (data: { messages: string[] }) => {
-      setMessages(data.messages);
+    const handleMessages = (data: { messages: Message[] }) => {
+      console.log(data.messages);
+      // setMessages(data.messages);
     };
 
     socket.on("user_joined", handleUserJoined);
