@@ -140,7 +140,6 @@ def handle_send_message(data):
         )
     )
 
-    print(messages[room_code])
 
     emit(
         "recieve_message",
