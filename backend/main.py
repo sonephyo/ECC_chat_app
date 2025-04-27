@@ -52,21 +52,26 @@ def handle_create_room(data):
 
     private_rooms[room_code] = [request.sid]
     join_room(room_code)
+    messages[room_code].append("System: " + username + " has created the room.")
 
     emit("room_created", {"room_code": room_code})
+
+    emit("recieve_message", {"messages": messages[room_code]}, broadcast=True)
     print(f"{username} created room {room_code}")
 
 
 # Joining a private room and leaving
-
-
 @socketio.on("join_room")
 def handle_join_room(data):
     username = data["username"]
     room_code = data["room_code"]
 
     if room_code in private_rooms:
-        print(private_rooms[room_code], " The lenght is ", len(private_rooms[room_code]) > 2)
+        print(
+            private_rooms[room_code],
+            " The lenght is ",
+            len(private_rooms[room_code]) > 2,
+        )
         if request.sid in private_rooms[room_code]:
             print(f"{username} (sid: {request.sid}) already in room {room_code}")
             emit("user_joined", {"username": username}, to=request.sid)
@@ -77,6 +82,8 @@ def handle_join_room(data):
         private_rooms[room_code].append(request.sid)
         join_room(room_code)
         emit("user_joined", {"username": username}, to=room_code)
+        messages[room_code].append("System: " + username + " has joined the room.")
+        emit("recieve_message", {"messages": messages[room_code]}, broadcast=True)
     else:
         emit("error", {"message": "Invalid room code"})
     print(private_rooms)
@@ -97,12 +104,21 @@ def handle_leave_room(data):
 
 
 # handle message send
-# @socketio.on("send_message")
-# def handle_send_message(data):
-#     room_code = data["room_code"]
-#     message = data["message"]
+@socketio.on("send_message")
+def handle_send_message(data):
+    username = data["username"]
+    room_code = data["room_code"]
+    message = data["message"]
 
-#     emit("recieve_message", {"message": message}, to=room_code)
+    if request.sid not in private_rooms[room_code]:
+        emit("error", {"message": "User should not be sending message here"})
+
+    messages[room_code].append(message)
+    
+    print(messages[room_code])
+
+    emit("recieve_message", {"messages": messages[room_code]}, to=room_code, broadcast=True)
+
 
 if __name__ == "__main__":
     socketio.run(app, host="0.0.0.0", port=5001, debug=True)
