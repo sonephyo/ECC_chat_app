@@ -1,5 +1,5 @@
-import Chat from '~/routes/chat';
-import {Point, EllipticCurve, secp256k1} from './Ecdh'
+import {Point} from './Ecdh'
+import { secp256k1 } from './test/EllipticCurveTest';
 
 class ChatCrypto{
     private privateKey?: bigint;
@@ -96,4 +96,4 @@ class ChatCrypto{
 
 }
 
-export const chatCrypto = new ChatCrypto();
+export {ChatCrypto};
