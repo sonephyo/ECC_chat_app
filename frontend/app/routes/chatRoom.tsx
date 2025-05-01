@@ -19,7 +19,9 @@ interface Message {
   username: string;
   content: string;
   timestamp: string;
+  encrypted?: boolean;
 }
+
 const chatRoom = () => {
   const { socket } = useSocket();
   const { roomId } = useParams();
@@ -30,6 +32,7 @@ const chatRoom = () => {
   const [inputValue, setInputValue] = useState("");
   const location = useLocation();
   const roomRef = useRef(roomId);
+  const [isEncrypted, setIsEncrypted] = useState(false);
 
   useEffect(() => {
     if (!socket || !roomId || !username) {
