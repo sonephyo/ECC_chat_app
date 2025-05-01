@@ -39,8 +39,9 @@ const secret2 = chatCryptoInstanceB.getSharedSecret();
 console.log(secret1 === secret2);
 
 const message = "Hello World, are you listening to me"
+console.log("rawTest: ", message)
 const ciphertext = await chatCryptoInstanceA.encrypt(message)
 console.log("CipherText: ", ciphertext)
 const decryptedtext = await chatCryptoInstanceB.decrypt(ciphertext)
 console.log("decryptedText: ", decryptedtext)
-
+console.log("Are message the same: ", message == decryptedtext)

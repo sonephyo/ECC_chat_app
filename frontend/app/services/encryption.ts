@@ -36,6 +36,7 @@ class ChatCrypto {
     const hashed = createHash("sha256").update(raw).digest();
     return new Uint8Array(hashed);
   }
+  
   async encrypt(message: string): Promise<string> {
     if (!this.shareSecret) throw new Error("No session established");
 
