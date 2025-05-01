@@ -34,6 +34,7 @@ const chatRoom = () => {
   const roomRef = useRef(roomId);
   const [isEncrypted, setIsEncrypted] = useState(false);
 
+  // If the socket is missing, user will be redirected back and will not be able to join the room
   useEffect(() => {
     if (!socket || !roomId || !username) {
       console.log("Missing info, redirecting...");
@@ -43,8 +44,10 @@ const chatRoom = () => {
     roomRef.current = roomId;
   }, []);
 
+  // This will happen as soon as the user get in and expected to happen only one time cuz socket can only change state one time
   useEffect(() => {
     if (!socket || !username || !roomId) return;
+    // Tell the backend to make the user join the room
     socket.emit("join_room", { username: username, room_code: roomId });
 
     const handleUserJoined = (data: { username: string }) => {
@@ -60,10 +63,15 @@ const chatRoom = () => {
       setMessages(data.messages);
     };
 
+    // After user join, we just console.log (No functionality on the app)
     socket.on("user_joined", handleUserJoined);
+    // Any error returned by backend will be handle with this
     socket.on("error", handleError);
+    // any message that is recieved by backend will be run 
+    // Probably this part will mostly need to be fixed *********************
     socket.on("recieve_message", handleMessages);
 
+    // This is just handling when the user leave the room
     const handleLeave = () => {
       socket.emit("leave_room", { username, room_code: roomId });
     };
@@ -84,6 +92,8 @@ const chatRoom = () => {
     };
   }, [socket]);
 
+
+  // Every time user send message, backend will be notified **************
   const handleSendMessage = () => {
     if (!socket || !inputValue) return;
     socket.emit("send_message", {
