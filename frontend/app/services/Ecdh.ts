@@ -1,5 +1,4 @@
 // src/lib/ecc.ts
-import { randomBytes } from "crypto";
 // First declare the interface to break circular dependency
 interface IEllipticCurve {
   p: bigint;
@@ -134,17 +133,18 @@ class EllipticCurve implements IEllipticCurve {
   }
 
   generateKeyPair(): { privateKey: bigint; publicKey: Point } {
-    // if (typeof window === "undefined") {
-    //   throw new Error(
-    //     "Web Crypto API is only available in browser environments"
-    //   );
-    // }
+    if (typeof window === "undefined") {
+      throw new Error(
+        "Web Crypto API is only available in browser environments"
+      );
+    }
 
-    // const randomBytes = new Uint8Array(32);
-    // window.crypto.getRandomValues(randomBytes);
-    const generatedRandomBytes = randomBytes(32);
+    const randomBytes = new Uint8Array(32);
+    window.crypto.getRandomValues(randomBytes);
+    // The following code if used will only be run on nodejs
+    // const generatedRandomBytes = randomBytes(32);
 
-    const hexString = Array.from(generatedRandomBytes)
+    const hexString = Array.from(randomBytes)
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");
     const privateKey = BigInt("0x" + hexString) % this.n;

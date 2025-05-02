@@ -1,8 +1,7 @@
-import { createHash } from "crypto";
 import { Point } from "./Ecdh";
 import { secp256k1 } from "./test/EllipticCurveTest";
 
-class ChatCrypto {
+export class ChatCrypto {
   private privateKey?: bigint;
   public publicKey?: Point;
   private shareSecret?: bigint;
@@ -30,10 +29,11 @@ class ChatCrypto {
     this.shareSecret = sharePoint.x;
   }
 
-  deriveAesKeyFromBigInt(secret: bigint): Uint8Array {
+  async deriveAesKeyFromBigInt(secret: bigint): Promise<Uint8Array<ArrayBufferLike>> {
     const hex = secret.toString(16).padStart(64, "0");
     const raw = Buffer.from(hex, "hex");
-    const hashed = createHash("sha256").update(raw).digest();
+    // const hashed = createHash("sha256").update(raw).digest();
+    const hashed = await crypto.subtle.digest("SHA-256", raw)
     return new Uint8Array(hashed);
   }
   
@@ -42,7 +42,7 @@ class ChatCrypto {
 
     const encoder = new TextEncoder();
     const data = encoder.encode(message);
-    const secretBytes = this.deriveAesKeyFromBigInt(this.shareSecret);
+    const secretBytes = await this.deriveAesKeyFromBigInt(this.shareSecret);
 
     const key = await crypto.subtle.importKey(
       "raw",
@@ -73,7 +73,7 @@ class ChatCrypto {
     if (!this.shareSecret) throw new Error("No seesion established");
 
     const { iv, data } = JSON.parse(encrypted);
-    const secretBytes = this.deriveAesKeyFromBigInt(this.shareSecret);
+    const secretBytes = await this.deriveAesKeyFromBigInt(this.shareSecret);
     console.log(iv);
     console.log(data);
 
@@ -113,5 +113,3 @@ class ChatCrypto {
     return this.shareSecret;
   }
 }
-
-export { ChatCrypto };

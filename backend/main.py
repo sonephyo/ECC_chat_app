@@ -2,18 +2,24 @@ from datetime import datetime
 from flask import Flask, request
 from flask_socketio import SocketIO, emit, send
 from flask_cors import CORS
-from Message import Message
+from models.Message import Message
 from flask_socketio import join_room, leave_room
 
 from collections import defaultdict
 
+# Temporary Database
 private_rooms = {}
+private_room_publicKeys = {}
 messages = defaultdict(list)
-
+li = [0]
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet",)
+socketio = SocketIO(
+    app,
+    cors_allowed_origins="*",
+    async_mode="eventlet",
+)
 
 
 @app.route("/chat-groups")
@@ -32,9 +38,6 @@ def handle_disconnect():
     print(f"User {request.sid} disconnected.")
 
 
-li = [0]
-
-
 def generate_room_code():
     li[0] += 1
     return str(li[0])
@@ -46,6 +49,7 @@ def handle_create_room(data):
     room_code = generate_room_code()
 
     private_rooms[room_code] = [request.sid]
+    private_room_publicKeys[room_code] = {}
     join_room(room_code)
     new_message = Message(
         username="System",
@@ -101,9 +105,13 @@ def handle_leave_room(data):
     if room_code in private_rooms:
         leave_room(room_code)
         private_rooms[room_code].remove(request.sid)
+        del private_room_publicKeys[room_code][username]
         if len(private_rooms[room_code]) == 0:
             del private_rooms[room_code]
-
+            del private_room_publicKeys[room_code]
+            
+        print(private_room_publicKeys[room_code])
+        
         messages[room_code].append(
             Message(
                 username="System",
@@ -111,12 +119,35 @@ def handle_leave_room(data):
                 timestamp=datetime.now().isoformat(),
             )
         )
+        
+        emit("other_user_left", {}, to=room_code)
         emit(
             "recieve_message",
             {"messages": Message.serialize_list(messages[room_code])},
             to=room_code,
         )
         print(username, "left the room", room_code)
+
+
+@socketio.on("send_public_key")
+def handle_public_key(data):
+    x = data["x"]
+    y = data["y"]
+    username = data["username"]
+    room_code = data["room_code"]
+
+    if room_code not in private_room_publicKeys:
+        return
+    if (
+        room_code in private_room_publicKeys
+        and username in private_room_publicKeys[room_code]
+    ):
+        return
+
+    private_room_publicKeys[room_code][username] = {"x": x, "y": y}
+    print("for starting communication", private_room_publicKeys[room_code])
+    if len(private_room_publicKeys[room_code]) == 2:
+        emit("ready_for_comm", private_room_publicKeys[room_code], to=room_code)
 
 
 @socketio.on("send_message")
@@ -133,7 +164,6 @@ def handle_send_message(data):
             username=username, content=message, timestamp=datetime.now().isoformat()
         )
     )
-
 
     emit(
         "recieve_message",

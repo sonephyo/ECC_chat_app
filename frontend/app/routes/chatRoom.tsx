@@ -2,7 +2,7 @@ import { AnimatePresence } from "framer-motion";
 import { ArrowLeft, Lock, Send } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
-import { motion } from "framer-motion"
+import { motion } from "framer-motion";
 import { Button } from "~/components/ui/button";
 import {
   Card,
@@ -14,6 +14,7 @@ import {
 } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { useSocket } from "~/lib/socketContext";
+import { ChatCrypto } from "~/services/encryption";
 
 interface Message {
   username: string;
@@ -21,6 +22,13 @@ interface Message {
   timestamp: string;
   encrypted?: boolean;
 }
+
+type PublicKeyMap = {
+  [username: string]: {
+    x: string;
+    y: string;
+  };
+};
 
 const chatRoom = () => {
   const { socket } = useSocket();
@@ -30,9 +38,17 @@ const chatRoom = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [inputValue, setInputValue] = useState("");
-  const location = useLocation();
   const roomRef = useRef(roomId);
-  const [isEncrypted, setIsEncrypted] = useState(false);
+  // Use State for ECCDHKE
+  const [chatCryptoInstance, setchatCryptoInstance] =
+    useState<ChatCrypto | null>(null);
+  const [otherUserPublicKey, setotherUserPublicKey] = useState<{
+    x: string;
+    y: string;
+  } | null>(null);
+  const [sharedSecret, setsharedSecret] = useState<bigint | undefined>(
+    undefined
+  );
 
   // If the socket is missing, user will be redirected back and will not be able to join the room
   useEffect(() => {
@@ -42,16 +58,29 @@ const chatRoom = () => {
       return;
     }
     roomRef.current = roomId;
+    const chatCrypto = new ChatCrypto();
+    chatCrypto.initialize();
+    setchatCryptoInstance(chatCrypto);
   }, []);
 
   // This will happen as soon as the user get in and expected to happen only one time cuz socket can only change state one time
   useEffect(() => {
-    if (!socket || !username || !roomId) return;
+    if (!socket || !username || !roomId || !chatCryptoInstance) return;
     // Tell the backend to make the user join the room
     socket.emit("join_room", { username: username, room_code: roomId });
 
+    // Setting up private/public keys for after joining
     const handleUserJoined = (data: { username: string }) => {
       console.log(`${data.username} joined the room.`);
+      // Starting Encryption
+      if (!otherUserPublicKey) {
+        console.log("sending send_public_key");
+        socket.emit("send_public_key", {
+          ...chatCryptoInstance.getPublicKeyPayLoad(),
+          username: username,
+          room_code: roomId,
+        });
+      }
     };
 
     const handleError = (data: { message: string }) => {
@@ -62,16 +91,29 @@ const chatRoom = () => {
     const handleMessages = (data: { messages: Message[] }) => {
       setMessages(data.messages);
     };
+    const handleReadyForComm = (data: PublicKeyMap) => {
+      console.log("Handling Ready for comm", data);
+      for (const key in data) {
+        if (key != username) {
+          setotherUserPublicKey(data[key]);
+          chatCryptoInstance.establishSession(data[key]);
+          const sharedSecret = chatCryptoInstance.getSharedSecret();
+          setsharedSecret(sharedSecret);
+          break;
+        }
+      }
+    };
 
-    // After user join, we just console.log (No functionality on the app)
+    const handleOtherUserLeft = () => {
+      navigate("/chat");
+    };
+
     socket.on("user_joined", handleUserJoined);
-    // Any error returned by backend will be handle with this
     socket.on("error", handleError);
-    // any message that is recieved by backend will be run 
-    // Probably this part will mostly need to be fixed *********************
     socket.on("recieve_message", handleMessages);
+    socket.on("ready_for_comm", handleReadyForComm);
+    socket.on("other_user_left", handleOtherUserLeft);
 
-    // This is just handling when the user leave the room
     const handleLeave = () => {
       socket.emit("leave_room", { username, room_code: roomId });
     };
@@ -81,7 +123,9 @@ const chatRoom = () => {
     return () => {
       socket.off("joined_room", handleUserJoined);
       socket.off("error", handleError);
+      socket.off("ready_for_comm", handleReadyForComm);
       window.removeEventListener("beforeunload", handleLeave);
+      setchatCryptoInstance(null);
 
       const newPath = window.location.pathname;
       const isNavigatingAway = !newPath.includes(roomRef.current as string);
@@ -90,10 +134,12 @@ const chatRoom = () => {
         handleLeave();
       }
     };
-  }, [socket]);
+  }, [socket, chatCryptoInstance]);
 
+  useEffect(() => {
+    console.log(sharedSecret);
+  }, [sharedSecret]);
 
-  // Every time user send message, backend will be notified **************
   const handleSendMessage = () => {
     if (!socket || !inputValue) return;
     socket.emit("send_message", {
