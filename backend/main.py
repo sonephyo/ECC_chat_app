@@ -112,7 +112,6 @@ def handle_leave_room(data):
             del private_rooms[room_code]
             del private_room_publicKeys[room_code]
 
-
         messages[room_code].append(
             Message(
                 username="System",
@@ -122,7 +121,7 @@ def handle_leave_room(data):
             )
         )
 
-        emit("other_user_left", {}, to=room_code)
+        emit("other_user_left", {"username": username}, to=room_code)
         emit(
             "recieve_message",
             {"messages": Message.serialize_list(messages[room_code])},
@@ -174,8 +173,7 @@ def handle_send_message(data):
 
     emit(
         "recieve_message",
-        {"messages": 
-            Message.serialize_list(messages[room_code])},
+        {"messages": Message.serialize_list(messages[room_code])},
         to=room_code,
     )
 

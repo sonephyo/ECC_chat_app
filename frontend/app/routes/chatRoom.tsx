@@ -109,8 +109,10 @@ const chatRoom = () => {
       }
     };
 
-    const handleOtherUserLeft = () => {
-      navigate("/chat");
+    const handleOtherUserLeft = (data: { username: string }) => {
+      const navWithUserLeft =
+        "/chat" + `?toast=${data.username} left the room. Chat session will be closed`;
+      navigate(navWithUserLeft);
     };
 
     socket.on("user_joined", handleUserJoined);
@@ -332,9 +334,6 @@ const chatRoom = () => {
                         }`}
                       >
                         {message.content}
-                        {message.encrypted && (
-                          <Lock className="h-3 w-3 inline-block ml-1 opacity-70" />
-                        )}
                       </div>
                       <span className="text-xs text-gray-500 mt-1 px-2">
                         {new Date(message.timestamp).toLocaleTimeString([], {

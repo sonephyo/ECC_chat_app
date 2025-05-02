@@ -2,16 +2,28 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import CreateChat from "~/components/PrivateMessaging/CreateChat";
 import JoinChat from "~/components/PrivateMessaging/JoinChat";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { useSocket } from "~/lib/socketContext";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
-import { Lock, Users } from 'lucide-react';
+import { Lock, Users } from "lucide-react";
+import { toast, Toaster } from "sonner";
 
 const Chat = () => {
   const [display, setDisplay] = useState<string>("create-room");
   const { socket, setUsername, username } = useSocket();
   const navigate = useNavigate();
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const toastText = searchParams.get("toast");
+    if (toastText) {
+      toast.info(toastText, {
+        id: toastText,
+      });
+      setSearchParams({});
+    }
+  }, []);
 
   useEffect(() => {
     if (!socket) return;
@@ -37,24 +49,26 @@ const Chat = () => {
   };
 
   return (
-    <motion.div 
+    <motion.div
       className="min-h-screen bg-black text-white flex flex-col items-center py-12 px-4"
       initial="hidden"
       animate="visible"
       variants={fadeIn}
     >
+      <div>
+        <Toaster position="top-center" closeButton />
+      </div>
       <div className="w-full max-w-md">
-        <motion.div 
-          className="mb-8 text-center"
-          variants={fadeIn}
-        >
+        <motion.div className="mb-8 text-center" variants={fadeIn}>
           <h1 className="text-3xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-teal-200">
             ECC Chat
           </h1>
-          <p className="text-gray-400">Secure, end-to-end encrypted messaging</p>
+          <p className="text-gray-400">
+            Secure, end-to-end encrypted messaging
+          </p>
         </motion.div>
         <ChatNavigate setDisplay={setDisplay} currentDisplay={display} />
-        <motion.div 
+        <motion.div
           className="bg-zinc-900 rounded-lg border border-zinc-800 p-6 mb-8 mt-8 w-full"
           variants={fadeIn}
         >
@@ -68,12 +82,12 @@ const Chat = () => {
             placeholder="Enter your name..."
             className="bg-zinc-800 border-zinc-700 text-white mb-1"
           />
-          <p className="text-xs text-gray-500">This name will be visible to others in your chat room</p>
+          <p className="text-xs text-gray-500">
+            This name will be visible to others in your chat room
+          </p>
         </motion.div>
 
-       
-
-        <motion.div 
+        <motion.div
           className="mt-6 bg-zinc-900 rounded-lg border border-zinc-800 p-6"
           variants={fadeIn}
           animate={{ opacity: 1 }}
