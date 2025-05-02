@@ -55,6 +55,7 @@ def handle_create_room(data):
         username="System",
         content=username + " created the room.",
         timestamp=datetime.now().isoformat(),
+        encrypted=False,
     )
     messages[room_code].append(new_message)
 
@@ -85,6 +86,7 @@ def handle_join_room(data):
                 username="System",
                 content=username + " joined the room. ",
                 timestamp=datetime.now().isoformat(),
+                encrypted=False,
             )
         )
         emit(
@@ -109,17 +111,17 @@ def handle_leave_room(data):
         if len(private_rooms[room_code]) == 0:
             del private_rooms[room_code]
             del private_room_publicKeys[room_code]
-            
-        print(private_room_publicKeys[room_code])
-        
+
+
         messages[room_code].append(
             Message(
                 username="System",
                 content=username + " left the room. ",
                 timestamp=datetime.now().isoformat(),
+                encrypted=False,
             )
         )
-        
+
         emit("other_user_left", {}, to=room_code)
         emit(
             "recieve_message",
@@ -161,13 +163,19 @@ def handle_send_message(data):
 
     messages[room_code].append(
         Message(
-            username=username, content=message, timestamp=datetime.now().isoformat()
+            username=username,
+            content=message,
+            timestamp=datetime.now().isoformat(),
+            encrypted=True,
         )
     )
 
+    print(messages)
+
     emit(
         "recieve_message",
-        {"messages": Message.serialize_list(messages[room_code])},
+        {"messages": 
+            Message.serialize_list(messages[room_code])},
         to=room_code,
     )
 

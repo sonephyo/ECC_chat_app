@@ -20,7 +20,7 @@ interface Message {
   username: string;
   content: string;
   timestamp: string;
-  encrypted?: boolean;
+  encrypted: boolean;
 }
 
 type PublicKeyMap = {
@@ -72,7 +72,6 @@ const chatRoom = () => {
     // Setting up private/public keys for after joining
     const handleUserJoined = (data: { username: string }) => {
       console.log(`${data.username} joined the room.`);
-      // Starting Encryption
       if (!otherUserPublicKey) {
         console.log("sending send_public_key");
         socket.emit("send_public_key", {
@@ -88,9 +87,15 @@ const chatRoom = () => {
       navigate("/chat");
     };
 
-    const handleMessages = (data: { messages: Message[] }) => {
+    const handleMessages = async (data: { messages: Message[] }) => {
+      for (const message of data.messages) {
+        if (message.encrypted) {
+          message.content = await chatCryptoInstance.decrypt(message.content);
+        }
+      }
       setMessages(data.messages);
     };
+
     const handleReadyForComm = (data: PublicKeyMap) => {
       console.log("Handling Ready for comm", data);
       for (const key in data) {
@@ -140,12 +145,14 @@ const chatRoom = () => {
     console.log(sharedSecret);
   }, [sharedSecret]);
 
-  const handleSendMessage = () => {
-    if (!socket || !inputValue) return;
+  const handleSendMessage = async () => {
+    if (!socket || !inputValue || !sharedSecret || !chatCryptoInstance) return;
+    const encryptedMessage = await chatCryptoInstance.encrypt(inputValue);
+    console.log(encryptedMessage);
     socket.emit("send_message", {
       username: username,
       room_code: roomId,
-      message: inputValue,
+      message: encryptedMessage,
     });
     setInputValue("");
   };
@@ -159,6 +166,12 @@ const chatRoom = () => {
       e.preventDefault();
       handleSendMessage();
     }
+  };
+
+  // Helper function
+  const truncate = (str: string, length = 10) => {
+    if (!str) return "";
+    return str.length > length ? `${str.substring(0, length)}...` : str;
   };
 
   return (
@@ -177,10 +190,6 @@ const chatRoom = () => {
                   Back
                 </Button>
               </Link>
-              <div className="flex items-center">
-                <Lock className="h-4 w-4 text-emerald-400 mr-1" />
-                <span className="text-xs text-emerald-400">Encrypted</span>
-              </div>
             </div>
             <CardTitle className="text-xl font-bold text-center bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-teal-200">
               {roomId && roomId.length > 10
@@ -191,6 +200,102 @@ const chatRoom = () => {
               Logged in as{" "}
               <span className="text-emerald-400 font-medium">{username}</span>
             </CardDescription>
+
+            {/* Encryption Info Panel */}
+            <div className="mt-4 bg-zinc-800/50 rounded-md p-3 text-xs">
+              <div className="text-center mb-2">
+                <span className="text-emerald-400 font-semibold">
+                  ECC Diffie-Hellman Key Exchange
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                {/* My Public Key */}
+                <div className="bg-zinc-800 p-2 rounded-md">
+                  <div className="text-xs text-emerald-400 font-medium mb-1">
+                    My Public Key
+                  </div>
+                  {chatCryptoInstance?.getPublicKeyPayLoad() ? (
+                    <>
+                      <div className="flex items-center text-[10px]">
+                        <span className="text-gray-400 mr-1">X:</span>
+                        <span className="text-gray-300 font-mono overflow-hidden text-ellipsis">
+                          {truncate(
+                            chatCryptoInstance.getPublicKeyPayLoad().x,
+                            15
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex items-center text-[10px]">
+                        <span className="text-gray-400 mr-1">Y:</span>
+                        <span className="text-gray-300 font-mono overflow-hidden text-ellipsis">
+                          {truncate(
+                            chatCryptoInstance.getPublicKeyPayLoad().y,
+                            15
+                          )}
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <span className="text-gray-500 italic text-[10px]">
+                      Initializing...
+                    </span>
+                  )}
+                </div>
+
+                {/* Other User's Public Key */}
+                <div className="bg-zinc-800 p-2 rounded-md">
+                  <div className="text-xs text-emerald-400 font-medium mb-1">
+                    Other's Public Key
+                  </div>
+                  {otherUserPublicKey ? (
+                    <>
+                      <div className="flex items-center text-[10px]">
+                        <span className="text-gray-400 mr-1">X:</span>
+                        <span className="text-gray-300 font-mono overflow-hidden text-ellipsis">
+                          {truncate(otherUserPublicKey.x, 15)}
+                        </span>
+                      </div>
+                      <div className="flex items-center text-[10px]">
+                        <span className="text-gray-400 mr-1">Y:</span>
+                        <span className="text-gray-300 font-mono overflow-hidden text-ellipsis">
+                          {truncate(otherUserPublicKey.y, 15)}
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <span className="text-gray-500 italic text-[10px]">
+                      Waiting for key...
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Shared Secret */}
+              <div className="mt-2 bg-zinc-800 p-2 rounded-md">
+                <div className="text-xs text-emerald-400 font-medium mb-1">
+                  Shared Secret
+                </div>
+                {sharedSecret ? (
+                  <div className="text-[10px] font-mono text-gray-300 overflow-hidden text-ellipsis">
+                    {truncate(sharedSecret.toString(), 30)}
+                  </div>
+                ) : (
+                  <span className="text-gray-500 italic text-[10px]">
+                    Waiting for key exchange...
+                  </span>
+                )}
+              </div>
+
+              {/* Encryption Status */}
+              <div className="mt-2 flex items-center justify-center">
+                <span className="text-[10px] text-gray-300">
+                  {sharedSecret
+                    ? "End-to-end encryption established"
+                    : "Setting up encryption..."}
+                </span>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="p-4 bg-zinc-900">
             <div className="h-[400px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-zinc-900">
@@ -227,6 +332,9 @@ const chatRoom = () => {
                         }`}
                       >
                         {message.content}
+                        {message.encrypted && (
+                          <Lock className="h-3 w-3 inline-block ml-1 opacity-70" />
+                        )}
                       </div>
                       <span className="text-xs text-gray-500 mt-1 px-2">
                         {new Date(message.timestamp).toLocaleTimeString([], {
@@ -247,15 +355,20 @@ const chatRoom = () => {
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Type your message..."
+                placeholder={
+                  sharedSecret
+                    ? "Type your message..."
+                    : "Waiting for encryption to be established..."
+                }
                 className="flex-1 bg-zinc-800 border-zinc-700 text-white placeholder:text-gray-500 focus:border-emerald-600"
+                disabled={!sharedSecret}
               />
               <Button
                 type="submit"
                 size="icon"
                 onClick={handleSendMessage}
                 className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                disabled={!inputValue.trim()}
+                disabled={!inputValue.trim() || !sharedSecret}
               >
                 <Send className="h-4 w-4" />
               </Button>

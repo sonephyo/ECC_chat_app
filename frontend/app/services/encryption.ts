@@ -29,14 +29,25 @@ export class ChatCrypto {
     this.shareSecret = sharePoint.x;
   }
 
-  async deriveAesKeyFromBigInt(secret: bigint): Promise<Uint8Array<ArrayBufferLike>> {
+  private hexToBytes(hex: string): Uint8Array {
+    const bytes = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < bytes.length; i++) {
+      bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+    }
+    return bytes;
+  }
+
+  async deriveAesKeyFromBigInt(
+    secret: bigint
+  ): Promise<Uint8Array<ArrayBufferLike>> {
     const hex = secret.toString(16).padStart(64, "0");
-    const raw = Buffer.from(hex, "hex");
+    const raw = this.hexToBytes(hex);
+    // const raw = Buffer.from(hex, "hex");
     // const hashed = createHash("sha256").update(raw).digest();
-    const hashed = await crypto.subtle.digest("SHA-256", raw)
+    const hashed = await crypto.subtle.digest("SHA-256", raw);
     return new Uint8Array(hashed);
   }
-  
+
   async encrypt(message: string): Promise<string> {
     if (!this.shareSecret) throw new Error("No session established");
 

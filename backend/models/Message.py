@@ -7,6 +7,7 @@ class Message:
     username: str
     content: str
     timestamp: str
+    encrypted: bool
 
     def to_dict(self):
         return asdict(self)
